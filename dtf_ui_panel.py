@@ -128,7 +128,7 @@ def readme_tables(res: dict) -> dict:
     for cid in [f"q{i}" for i in range(7)] + [f"g{i}" for i in range(4)]:
         c = res["cells"][cid]
         rows.append([_short(c["params"]), fmt2(c["opt_mean"])] + [f"{fmt1(c[r]['mean'])} ± {fmt1(c[r]['se'])}" for r in RULES]
-                    + [f"{c['diff_MG']['mean']:+.1f} ± {fmt1(c['diff_MG']['se'])}".replace(".", ","), f"{fmt2(c['tau']['G'])} / {fmt2(c['tau']['B'])}"])
+                    + [f"{c['diff_MG']['mean']:+.1f} ± {fmt1(c['diff_MG']['se'])}".replace(".", ",").replace("-", "−"), f"{fmt2(c['tau']['G'])} / {fmt2(c['tau']['B'])}"])
     out["regeln"] = md_table(["Zelle", "Optimum", "kurzsichtig (%)", "Info/Kosten (%)", "billigster nützlicher Test (%)", "kurzsichtig minus Info/Kosten", "τ (Info/Kosten / billigster)"], rows)
     rows = []
     base = res["cells"]["u0"]["opt_mean_all"]

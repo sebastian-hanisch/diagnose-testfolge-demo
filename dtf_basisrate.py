@@ -2,14 +2,14 @@
 
 Kranke: jeder Test positiv mit Wahrscheinlichkeit se, unabhängig. Gesunde, unabhängiger Fall: jeder Test mit Wahrscheinlichkeit fpr falsch positiv.
 Gesunde, gemeinsamer Fehler: ein Anteil a der Gesunden trägt einen Störfaktor, der jeden Test mit Wahrscheinlichkeit h positiv macht; die übrigen sind
-mit Wahrscheinlichkeit e falsch positiv, e so, dass die Rand-Falsch-positiv-Rate je Test unverändert fpr bleibt: a·h + (1 − a)·e = fpr.
+mit Wahrscheinlichkeit r falsch positiv (im Code `e`), r so, dass die Rand-Falsch-positiv-Rate je Test unverändert fpr bleibt: a·h + (1 − a)·r = fpr.
 Beide Modelle geben nach EINEM positiven Test denselben PPV; sie unterscheiden sich erst bei mehreren."""
 
 DISTURB_SHARE, DISTURB_PROB = 0.02, 0.4            # a und h (angenommen, nicht gemessen)
 PREVALENCE_OPTIONS = (1e-4, 1e-3, 1e-2, 5e-2)
 PREVALENCE_LABELS = {1e-4: "1 von 10.000", 1e-3: "1 von 1.000", 1e-2: "1 von 100", 5e-2: "1 von 20"}
 SE_OPTIONS = (0.9, 0.95, 0.99)
-FPR_OPTIONS = (0.01, 0.02, 0.05)                   # Falsch-positiv-Rate je Test (mindestens a·h = 0,008, sonst gäbe es kein e ≥ 0)
+FPR_OPTIONS = (0.01, 0.02, 0.05)                   # Falsch-positiv-Rate je Test (mindestens a·h = 0,008, sonst gäbe es kein r ≥ 0)
 K_OPTIONS = (1, 2, 3, 4, 5, 6)
 REFERRALS = (("Bevölkerung", 1e-4), ("Hausarzt", 1e-3), ("Überweisung", 0.02), ("Spezialambulanz", 0.2))
 REFERRAL_LABELS = {1e-4: "1 von 10.000", 1e-3: "1 von 1.000", 0.02: "1 von 50", 0.2: "1 von 5"}

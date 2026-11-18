@@ -54,9 +54,20 @@ st.markdown(
 (dynamische Optimierung mit optimalem Stoppen) und stellt **einfache Regeln** daneben. Sie fragt: Wie weit liegen die Regeln über dem Optimum? Wann lohnt ein **teurer breiter Test** (ein Genomtest) zuerst?
 Und wann reichen **zwei positive Tests** nicht, weil sie sich einen Fehler teilen? **Lehrmodell mit erfundenen Daten, keine medizinische Beratung.**
 
-Weiter unten: die drei **Kernfragen** und die Expander **🔧 Wie wir das erreichen – vollständiger Methodenvergleich**, **Wie funktioniert diese Demo?**, **📐 Mathematische Formulierung** und **⚠️ Annahmen, Grenzen und bekannte Probleme**.
+Direkt darunter erklärt **💬 In einfachen Worten** die Aufgabe ohne Formeln. Weiter unten: die drei **Kernfragen** und die Expander **🔧 Wie wir das erreichen – vollständiger Methodenvergleich**, **Wie funktioniert diese Demo?**, **📐 Mathematische Formulierung** und **⚠️ Annahmen, Grenzen und bekannte Probleme**.
 """
 )
+
+# erklaerseite:einfach:start (erzeugt von tools/set_demo_explainer.py (Website-Repo) aus tools/content/explainers/diagnose-testfolge-erklaert.json, nicht von Hand ändern)
+with st.expander("💬 In einfachen Worten"):
+    st.markdown(
+        """
+Stellen Sie sich vor, ein Gerät fällt aus und es kommen mehrere Ursachen in Frage. Jede Prüfung kostet etwas, und keine irrt nie. Wer am Ende die falsche Ursache nennt, zahlt dafür. Die Demo rechnet nach, in welcher Reihenfolge man prüfen sollte und wann man aufhört; sie erzählt das als Diagnose mit Tests und rechnet mit erfundenen Zahlen. Die **beste Folge** bestimmt sie exakt, indem sie in jedem Zwischenstand alle noch möglichen Prüfungen durchprobiert und den billigsten Gesamtweg nimmt. Daneben stehen einfache Regeln, ein breiter, teurer Test, ein dritter Ausgang „unklar“ und ein Rechner dafür, warum zwei positive Meldungen nicht reichen, wenn sie sich einen Fehler teilen. Es ist ein Rechenmodell und keine medizinische Beratung.
+
+[Ausführlich und verständlich erklärt, mit Fachteil](https://sebastianhanisch.net/diagnose-testfolge-erklaert.html)
+        """
+    )
+# erklaerseite:einfach:end
 
 st.caption("🔗 Die Adresszeile oben spiegelt Ihre aktuelle Konfiguration wider – einfach kopieren, um ein Szenario zu teilen.")
 
@@ -197,7 +208,7 @@ with st.expander("Wie funktioniert diese Demo?"):
 
 **Faustregeln.** Dieselbe Entscheidung ohne Rechnung über alle Zustände: *kurzsichtig* schaut einen Test voraus, *Info/Kosten* nimmt den Test mit dem größten Informationsgewinn je Kosten, *billigster nützlicher Test* nimmt den billigsten mit Information. Die beiden letzten brauchen eine Stoppschwelle τ; eine feste Schwelle (zum Beispiel 0,95) hätte beide Regeln schlechter aussehen lassen (Zahlen in der README), darum wurde τ je gemessener Zelle auf anderen Instanzen abgestimmt.
 
-**Genomtest.** Ein Test mit n + 1 Ausgängen: mit Wahrscheinlichkeit y wird die Diagnose eindeutig gefunden, sonst „kein Befund“, und der Zustand ändert sich nicht. **„Unklar“** ist ein dritter Ausgang jedes einfachen Tests ohne Information.
+**Genomtest.** Ein Test mit n + 1 Ausgängen: mit Wahrscheinlichkeit y wird die Diagnose eindeutig gefunden, sonst „kein Befund“, und die Wahrscheinlichkeiten der Diagnosen ändern sich nicht (der Test gilt danach als gemacht). **„Unklar“** ist ein dritter Ausgang jedes einfachen Tests ohne Information.
 
 **Basisratenfalle.** Kernfrage 3 rechnet die Wahrscheinlichkeit, krank zu sein, nach k positiven Tests: einmal mit unabhängigen Fehlern, einmal mit einem Störfaktor, den die Tests teilen.
 
@@ -206,24 +217,28 @@ with st.expander("Wie funktioniert diese Demo?"):
     )
 
 with st.expander("📐 Mathematische Formulierung"):
+    # erklaerseite:lesehilfe:start (erzeugt von tools/set_demo_explainer.py (Website-Repo) aus tools/content/explainers/diagnose-testfolge-erklaert.json, nicht von Hand ändern)
     st.markdown(
-        """
-**Lesehilfe.** *Gegeben:* Diagnosen d = 1, …, n mit Vorab p_d; Tests t = 1, …, m mit Kosten c_t und Ausgängen o; Irrtumspreis L. *Gesucht:* eine Strategie (Zustand → nächster Test oder Stopp) mit den kleinsten erwarteten Gesamtkosten.
+        r"""
+**Lesehilfe.** Gegeben sind $n$ mögliche Diagnosen mit Vorab $p_d$, $m$ Tests mit Kosten $c_t$ und Ausgängen $o$ sowie ein Irrtumspreis $L$. Gesucht ist eine Strategie, die jedem Zustand den nächsten Test oder das Aufhören zuordnet, mit den kleinsten erwarteten Gesamtkosten.
 
 | Symbol | Bedeutung |
 |---|---|
-| d, n | Diagnose, Zahl der Diagnosen |
-| p_d | Vorab-Wahrscheinlichkeit der Diagnose d, Summe 1 |
-| t, m | Test, Zahl der einfachen Tests |
-| c_t | Kosten von Test t, im Mittel 1 |
-| o | Ausgang eines Tests (negativ, positiv; mit „unklar“ drei; Genomtest n + 1) |
-| ℓ_t(o ∣ d) | Wahrscheinlichkeit des Ausgangs o von Test t, wenn Diagnose d vorliegt |
-| s | Zustand: für jeden Test, ob er gemacht wurde und mit welchem Ausgang |
-| P(d ∣ s) | Wahrscheinlichkeit der Diagnose d im Zustand s |
-| L | Irrtumspreis in mittleren Testkosten |
-| f(s) | kleinste erwartete Gesamtkosten ab Zustand s |
-"""
+| $d$, $n$ | Diagnose, Zahl der Diagnosen |
+| $p_d$ | Vorab-Wahrscheinlichkeit der Diagnose $d$, Summe 1 |
+| $t$, $m$ | Test, Zahl der einfachen Tests |
+| $c_t$ | Kosten von Test $t$, im Mittel 1 |
+| $o$ | Ausgang eines Tests (negativ, positiv; mit „unklar“ drei; Genomtest $n+1$) |
+| $\ell_t(o \mid d)$ | Wahrscheinlichkeit des Ausgangs $o$ von Test $t$, wenn Diagnose $d$ vorliegt |
+| $s$ | Zustand: für jeden Test, ob er gemacht wurde und mit welchem Ausgang |
+| $P(d \mid s)$ | Wahrscheinlichkeit der Diagnose $d$ im Zustand $s$ |
+| $L$ | Irrtumspreis in mittleren Testkosten |
+| $f(s)$ | kleinste erwartete Gesamtkosten ab Zustand $s$ |
+
+[Schritt für Schritt erklärt, mit Herleitung und Literatur](https://sebastianhanisch.net/diagnose-testfolge-erklaert.html#fachleute)
+        """
     )
+    # erklaerseite:lesehilfe:end
     st.markdown("Wahrscheinlichkeit der Diagnose im Zustand s, wenn bisher die Ausgänge o_t der gemachten Tests T(s) beobachtet wurden (Tests unabhängig gegeben die Diagnose):")
     st.latex(r"P(d \mid s) = \frac{p_d \prod_{t \in T(s)} \ell_t(o_t \mid d)}{\sum_{d'} p_{d'} \prod_{t \in T(s)} \ell_t(o_t \mid d')}")
     st.markdown("Optimale Strategie (Stopp: die wahrscheinlichste Diagnose nennen, Verlust L mal Gegenwahrscheinlichkeit):")
@@ -236,8 +251,8 @@ with st.expander("📐 Mathematische Formulierung"):
     st.latex(r"\ell_G(d \mid d) = y,\qquad \ell_G(\text{kein Befund} \mid d) = 1 - y")
     st.markdown("Wahrscheinlichkeit krank zu sein nach k positiven Tests bei Anteil Kranker π (Basisratenfalle, unabhängige Fehler; Falsch-positiv-Rate φ):")
     st.latex(r"\mathrm{PPV}_k = \frac{\pi\,\mathrm{Se}^k}{\pi\,\mathrm{Se}^k + (1-\pi)\,\varphi^k}")
-    st.markdown("Mit gemeinsamem Störfaktor (Anteil a der Gesunden, jeder Test dann mit Wahrscheinlichkeit h positiv; Rest mit Wahrscheinlichkeit e, so dass a·h + (1 − a)·e = φ):")
-    st.latex(r"\mathrm{PPV}_k = \frac{\pi\,\mathrm{Se}^k}{\pi\,\mathrm{Se}^k + (1-\pi)\,\big(a\,h^k + (1-a)\,e^k\big)}")
+    st.markdown("Mit gemeinsamem Störfaktor (Anteil a der Gesunden, jeder Test dann mit Wahrscheinlichkeit h positiv; Rest mit Wahrscheinlichkeit r, so dass a·h + (1 − a)·r = φ):")
+    st.latex(r"\mathrm{PPV}_k = \frac{\pi\,\mathrm{Se}^k}{\pi\,\mathrm{Se}^k + (1-\pi)\,\big(a\,h^k + (1-a)\,r^k\big)}")
     st.markdown("Dies ist das vollständige Modell der Demo (die Rechnung ist genau diese Gleichung, aufgezählt über alle Zustände). Nicht enthalten: Wiederholung desselben Tests, abhängige Fehler zwischen Tests, Reihenfolgebedingungen, Irrtumspreis je Diagnosenpaar.")
 
 with st.expander("⚠️ Annahmen, Grenzen und bekannte Probleme"):

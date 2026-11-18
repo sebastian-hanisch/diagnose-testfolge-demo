@@ -67,7 +67,47 @@ def _pm(c, rule):
 
 def _diff(c):
     d = c["diff_MG"]
-    return f"{d['mean']:+.1f} ± {fmt1(d['se'])}".replace(".", ",")
+    return f"{d['mean']:+.1f} ± {fmt1(d['se'])}".replace(".", ",").replace("-", "−")  # typografisches Minus wie im übrigen Text
+
+
+def unclear_increase_se(cells):
+    """Standardfehler des Zuwachses m_c/m_0 − 1 (in Prozentpunkten) für ungepaarte Mittel, Delta-Methode:
+    SE = (m_c/m_0) · sqrt((se_c/m_c)² + (se_0/m_0)²). Quelle: das Optimum je Instanz (alle Instanzen der Zelle)."""
+    def stats(cid):
+        o = np.array(cells[cid]["per_instance"]["opt"], float)
+        return float(o.mean()), float(o.std(ddof=1) / math.sqrt(len(o)))
+    m0, s0 = stats("u0")
+    out = []
+    for cid in ("u1", "u2"):
+        mc, sc = stats(cid)
+        out.append(100.0 * (mc / m0) * math.sqrt((sc / mc) ** 2 + (s0 / m0) ** 2))
+    return out
+
+
+def open_ids(cells, ids, a, b, n_tune):
+    """Zellen, in denen der gepaarte Unterschied der Lücken a − b höchstens zwei Standardfehler beträgt."""
+    out = []
+    for cid in ids:
+        m, s = paired(cells[cid], a, b, n_tune)
+        if abs(m) <= 2 * s:
+            out.append(cid)
+    return out
+
+
+def cell_label(params):
+    """Kurzbeschreibung der Besonderheit einer Regelzelle gegenüber dem Standard."""
+    if params["se"] == 1.0:
+        return "rauschfrei"
+    if params["zipf"] == 0.0:
+        return "gleichverteiltes Vorab"
+    if params["zipf"] == 1.5:
+        return "Vorab sehr schief"
+    return f"Se/Sp {fmt1(params['se'])}/{fmt1(params['sp'])}, L {params['loss']}, {params['n']} Diagnosen".replace(".", ",")
+
+
+def _z(n):
+    """„1 Zelle“ / „3 Zellen“ (kein Klammer-Plural)."""
+    return f"{n} Zelle" if n == 1 else f"{n} Zellen"
 
 
 def derived(res):
@@ -91,8 +131,9 @@ def derived(res):
         "pair_BG": sign_counts(cells, BIN_IDS, "B", "G", res["meta"]["n_tune"]), "pair_BM": sign_counts(cells, BIN_IDS, "B", "M", res["meta"]["n_tune"]),
         "pair_MG_unclear": sign_counts(cells, ("u0", "u1", "u2"), "M", "G", res["meta"]["n_tune"]),
         "pair_BG_unclear": sign_counts(cells, ("u0", "u1", "u2"), "B", "G", res["meta"]["n_tune"]),
-        "unclear_inc_se": [100.0 * math.sqrt(float(np.std(cells[c]["per_instance"]["opt"], ddof=1)) ** 2 + float(np.std(cells["u0"]["per_instance"]["opt"], ddof=1)) ** 2)
-                           / math.sqrt(len(cells[c]["per_instance"]["opt"])) / float(np.mean(cells["u0"]["per_instance"]["opt"])) for c in ("u1", "u2")],
+        "unclear_inc_se": unclear_increase_se(cells),
+        "open_KG": open_ids(cells, BIN_IDS, "M", "G", res["meta"]["n_tune"]),
+        "open_BM": open_ids(cells, BIN_IDS, "B", "M", res["meta"]["n_tune"]),
         "genom_mid": [(y, c, cells[f"y{int(y * 100)}c{c}"]["share_first"]) for y in (0.25, 0.5) for c in (1, 2, 4, 8) if 0.2 < cells[f"y{int(y * 100)}c{c}"]["share_first"] < 0.8],
         "stable": {thr: stable_interval([R.best_rule(cells[c])[1] for c in ALL_IDS], thr) for thr in (C.VERDICT_REICHT, C.VERDICT_VERFEHLT)},
         "unclear": [100 * (cells[c]["opt_mean_all"] / cells["u0"]["opt_mean_all"] - 1.0) for c in ("u0", "u1", "u2")],
@@ -136,9 +177,9 @@ def render(res: dict, n_tests: int) -> str:
 <!-- TODO nach dem Deploy: direkt hierher den Live-Link setzen (Leerzeile davor und danach):
 **[→ Demo live ausprobieren](https://sebastianhanisch-diagnose-testfolge-demo.streamlit.app/)** -->
 
-Fall-Demo zur **Entscheidungsanalyse** für die Website „Sebastian Hanisch – Operations Research und Machine Learning“. Eine Person, mehrere mögliche Diagnosen, mehrere Tests mit Kosten und Fehlern: Die Demo rechnet die **beste Folge exakt** (dynamische Optimierung über alle Zustände mit optimalem Stoppen) und stellt drei **einfache Regeln** daneben. Dazu kommen ein **Genomtest** (ein breiter, teurer Test mit vielen Ausgängen), ein dritter Ausgang **„unklar“** und ein Rechner zur **Basisratenfalle**. **Lehrmodell mit erfundenen Daten, keine medizinische Beratung** und keine Empfehlung für eine Untersuchungsfolge.
+Demo zur **Entscheidungsanalyse** (das zwölfte Stück der gleichnamigen Linie) für die Website „Sebastian Hanisch – Operations Research und Machine Learning“. Eine Person, mehrere mögliche Diagnosen, mehrere Tests mit Kosten und Fehlern: Die Demo rechnet die **beste Folge exakt** (dynamische Optimierung über alle Zustände mit optimalem Stoppen) und stellt drei **einfache Regeln** daneben. Dazu kommen ein **Genomtest** (ein breiter, teurer Test mit vielen Ausgängen), ein dritter Ausgang **„unklar“** und ein Rechner zur **Basisratenfalle**. **Lehrmodell mit erfundenen Daten, keine medizinische Beratung** und keine Empfehlung für eine Untersuchungsfolge.
 
-Sie setzt dort an, wo [`testwert-evsi-demo`](https://github.com/sebastian-hanisch/testwert-evsi-demo) aufhört: Diese Demo nennt sequentielle Tests, die Wahl zwischen verschiedenartigen Tests und mehr als zwei Zustände selbst als nicht gerechnet; hier sind sie gerechnet.
+Sie setzt dort an, wo [`testwert-evsi-demo`](https://github.com/sebastian-hanisch/testwert-evsi-demo) aufhört: Diese Demo nennt sequentielle Tests, die Wahl zwischen verschiedenartigen Tests und mehr als zwei Zustände selbst als nicht gerechnet; hier sind sie gerechnet. Das Stoppen nach jedem Test mit bis zu vier gleichartigen Tests rechnet die [`entscheidung-verfahrenswahl-demo`](https://github.com/sebastian-hanisch/entscheidung-verfahrenswahl-demo) (Verweis unten).
 
 ## Warum dieses Problem
 
@@ -162,7 +203,7 @@ Dem Bau ging eine Vormessung mit dem Zufallsgenerator von NumPy voraus (andere I
 Jede Instanz hat 4, 6 oder 10 Diagnosen (Standard {C.DEFAULT_N}) mit einem Zipf-Vorab (gleichverteilt, schief mit Exponent 1,0 oder sehr schief mit 1,5), bis zu {C.M_MAX} einfache Tests und einen Irrtumspreis L in mittleren Testkosten. Test t spricht jede Diagnose unabhängig mit Wahrscheinlichkeit {fmt1(C.DENSITY)} an; er fällt bei einer angesprochenen Diagnose mit Wahrscheinlichkeit Se positiv aus, sonst mit 1 − Sp; Kosten lognormal (σ {fmt1(C.COST_SIGMA)}), im Mittel 1. Jeder Test wird höchstens einmal gemacht. Am Ende wird die wahrscheinlichste Diagnose genannt; ein Irrtum kostet L. **Gesamtkosten = Testkosten + L · P(Irrtum).** Der **Zustand** merkt sich je Test, ob er gemacht wurde und mit welchem Ausgang; daraus folgt die Wahrscheinlichkeit jeder Diagnose nach Bayes (Tests unabhängig gegeben die Diagnose).
 
 - **Unklar:** dritter Ausgang jedes einfachen Tests mit Wahrscheinlichkeit u (0; 0,1; 0,3), unabhängig von der Diagnose.
-- **Genomtest:** n + 1 Ausgänge; mit Wahrscheinlichkeit y (Ausbeute 0,25 oder 0,5) wird die Diagnose eindeutig gefunden, sonst „kein Befund“ (ändert nichts). Kosten in mittleren Testkosten (1, 2, 4, 8, in der Messreihe auch 16).
+- **Genomtest:** n + 1 Ausgänge; mit Wahrscheinlichkeit y (Ausbeute 0,25 oder 0,5) wird die Diagnose eindeutig gefunden, sonst „kein Befund“ (das ändert die Wahrscheinlichkeiten der Diagnosen nicht; der Test gilt danach als gemacht). Kosten in mittleren Testkosten (1, 2, 4, 8, in der Messreihe auch 16).
 - **Rechengrenzen:** höchstens {C.M_MAX} einfache Tests (3^m Zustände), mit „unklar“ höchstens {C.M_CAP_UNCLEAR} (4^m), mit Genomtest höchstens {C.M_CAP_GENOME} einfache Tests; die App sagt es, wenn sie weniger rechnet als eingestellt.
 - Vollständige Formeln: Expander **📐 Mathematische Formulierung** der App. Alle Parameter sind angenommen.
 
@@ -186,23 +227,23 @@ Alle Zahlen: Messreihe `data/dtf_results.json` ({res['meta']['n_instances']} Ins
 {t['regeln']}
 
 - **Im Standard (Se/Sp 0,9/0,9, L 20)** liegt kurzsichtig {_pm(qa, 'M')} %, Info/Kosten {_pm(qa, 'G')} % und der billigste nützliche Test {_pm(qa, 'B')} % über dem Optimum von {fmt2(qa['opt_mean'])} (im Mittel {fmt1(qa['opt_tests_mean'])} Tests, Irrtumswahrscheinlichkeit {fmt1(100 * qa['opt_perr_mean'])} %).
-- **Rauschfrei (Se/Sp 1,0/1,0)** liegt Info/Kosten bei {_pm(q0, 'G')} %; schon bei 0,95/0,95 sind es {_pm(q1, 'G')} %. Mit Rauschen liegt Info/Kosten in allen übrigen {len(BIN_IDS) - 1} Zellen zwischen {fmt1(min(cells[c]['G']['mean'] for c in BIN_IDS if c != 'q0'))} und {fmt1(max(cells[c]['G']['mean'] for c in BIN_IDS if c != 'q0'))} %.
-- **Welche Regel vorn liegt, hängt an den Einstellungen.** Kurzsichtig liegt in {d['n_M']} der {len(BIN_IDS)} Zellen mehr als zwei Standardfehler vor Info/Kosten, Info/Kosten in {d['n_G']} (Se/Sp 1,0/1,0; Irrtumspreis 100; Vorab gleichverteilt), in {d['n_open']} Zelle(n) ist es offen. Bei Irrtumspreis 100 liegt kurzsichtig bei {_pm(q5, 'M')} % und Info/Kosten bei {_pm(q5, 'G')} % (Differenz {_diff(q5)}); bei gleichverteiltem Vorab {_pm(g1, 'M')} % gegen {_pm(g1, 'G')} % (Differenz {_diff(g1)}).
-- **Der billigste nützliche Test** liegt in {d['pair_BG']['over']} von {len(BIN_IDS)} Zellen mehr als zwei Standardfehler über Info/Kosten (gepaart auf denselben Instanzen) und in {d['pair_BM']['over']} über kurzsichtig; über kurzsichtig liegt er in {d['pair_BM']['under']} Zelle(n) darunter und in {d['pair_BM']['open']} offen (im Mittel allein liegt er in {d['B_over_G']} beziehungsweise {d['B_over_M']} Zellen höher).
+- **Rauschfrei (Se/Sp 1,0/1,0)** liegt Info/Kosten bei {_pm(q0, 'G')} %; schon bei 0,95/0,95 sind es {_pm(q1, 'G')} %. In den {len(BIN_IDS) - 1} Zellen mit Se/Sp unter 1 (sie unterscheiden sich zusätzlich im Irrtumspreis, im Vorab oder in der Zahl der Diagnosen) liegt Info/Kosten zwischen {fmt1(min(cells[c]['G']['mean'] for c in BIN_IDS if c != 'q0'))} und {fmt1(max(cells[c]['G']['mean'] for c in BIN_IDS if c != 'q0'))} %.
+- **Welche Regel die kleinere Lücke hat, hängt an den Einstellungen.** Kurzsichtig hat in {d['n_M']} der {len(BIN_IDS)} Zellen eine um mehr als zwei Standardfehler kleinere Lücke als Info/Kosten, Info/Kosten in {d['n_G']} (Se/Sp 1,0/1,0; Irrtumspreis 100; Vorab gleichverteilt); in {_z(d['n_open'])} ist der Unterschied offen. Bei Irrtumspreis 100 liegt kurzsichtig bei {_pm(q5, 'M')} % und Info/Kosten bei {_pm(q5, 'G')} % (Differenz {_diff(q5)}); bei gleichverteiltem Vorab {_pm(g1, 'M')} % gegen {_pm(g1, 'G')} % (Differenz {_diff(g1)}).
+- **Der billigste nützliche Test** hat in {d['pair_BG']['over']} von {len(BIN_IDS)} Zellen eine um mehr als zwei Standardfehler größere Lücke als Info/Kosten (gepaart auf denselben Instanzen) und in {d['pair_BM']['over']} Zellen eine größere Lücke als kurzsichtig; gegenüber kurzsichtig ist seine Lücke in {_z(d['pair_BM']['under'])} kleiner und in {_z(d['pair_BM']['open'])} ist der Unterschied offen (nach den Mittelwerten allein ist sie in {d['B_over_G']} beziehungsweise {d['B_over_M']} Zellen größer).
 - **Meldung der App** (Lücke der besten einfachen Regel in der Zelle): „reicht“ (unter {C.VERDICT_REICHT:.0f} %) in {st['reicht']} Zellen, „kostet merklich“ in {st['merklich']}, „verfehlt deutlich“ (über {C.VERDICT_VERFEHLT:.0f} %) in {st['verfehlt']}.
 
 **Ergebnis „unklar“** (6 Diagnosen, 6 Tests, Vorab schief, Se/Sp 0,9/0,9, L 20):
 
 {t['unklar']}
 
-- Der Optimalwert steigt bei u = 0,1 um rund {fmt1(d['unclear'][1])} % und bei u = 0,3 um rund {fmt1(d['unclear'][2])} % (Mittel über alle {res['meta']['n_instances']} Instanzen; **ungepaart**: die drei Zellen nutzen verschiedene Instanzen, der Standardfehler des Zuwachses liegt bei etwa ± {fmt1(d['unclear_inc_se'][0])} beziehungsweise ± {fmt1(d['unclear_inc_se'][1])} Punkten).
-- Kurzsichtig liegt in {d['pair_MG_unclear']['under']} der drei Zellen mehr als zwei Standardfehler unter Info/Kosten (gepaart), im Mittel vorn in {d['unclear_M_best']}; Info/Kosten liegt in {3 - d['pair_BG_unclear']['over']} der drei Zellen nicht klar vor dem billigsten nützlichen Test (offen), sonst mehr als zwei Standardfehler.
+- Der Optimalwert steigt bei u = 0,1 um rund {fmt1(d['unclear'][1])} % und bei u = 0,3 um rund {fmt1(d['unclear'][2])} % (Mittel über alle {res['meta']['n_instances']} Instanzen; **ungepaart**: die drei Zellen nutzen verschiedene Instanzen, der Standardfehler des Zuwachses liegt nach der Delta-Methode für das Verhältnis ungepaarter Mittel bei etwa ± {fmt1(d['unclear_inc_se'][0])} beziehungsweise ± {fmt1(d['unclear_inc_se'][1])} Punkten).
+- Kurzsichtig hat in {d['pair_MG_unclear']['under']} der drei Zellen eine um mehr als zwei Standardfehler kleinere Lücke als Info/Kosten (gepaart) und nach den Mittelwerten in {d['unclear_M_best']} die kleinste Lücke aller drei Regeln; Info/Kosten hat gegenüber dem billigsten nützlichen Test in {d['pair_BG_unclear']['under']} der drei Zellen eine um mehr als zwei Standardfehler kleinere Lücke, in {_z(d['pair_BG_unclear']['open'])} ist der Unterschied offen.
 
 **Genomtest zuerst** (6 einfache Tests, 6 Diagnosen, Se/Sp 0,9/0,9, L 20; Mehrkosten in Prozent über dem Optimum der Instanz):
 
 {t['genom']}
 
-- Bei Ausbeute 0,50 ist der Genomtest bei Kosten 1 in {sh(y5(1))}, bei 2 in {sh(y5(2))}, bei 4 in {sh(y5(4))} der Instanzen der erste Test; bei Ausbeute 0,25 bei Kosten 1 in {sh(y25(1))}, bei 2 in {sh(y25(2))}. **Der Wechsel liegt je nach Ausbeute zwischen den Kosten 1 und 2 beziehungsweise 2 und 4 mittleren Testkosten.** An Stufen mit Anteilen zwischen 20 und 80 % ({'; '.join(f"Ausbeute {fmt2(y)}, Kosten {c}: {s * 100:.0f} %" for y, c, s in d['genom_mid'])}) entscheidet die Instanz, nicht die Kostenstufe. Zwischen den Stufen ist nichts gemessen.
+- Bei Ausbeute 0,50 ist der Genomtest bei Kosten 1 in {sh(y5(1))}, bei 2 in {sh(y5(2))}, bei 4 in {sh(y5(4))} der Instanzen der erste Test; bei Ausbeute 0,25 bei Kosten 1 in {sh(y25(1))}, bei 2 in {sh(y25(2))}. **Der Wechsel (der Anteil fällt auf 0 %) liegt bei Ausbeute 0,25 zwischen den Kosten 1 und 2, bei Ausbeute 0,50 zwischen den Kosten 2 und 4 mittleren Testkosten.** An Stufen mit Anteilen zwischen 20 und 80 % ({'; '.join(f"Ausbeute {fmt2(y)}, Kosten {c}: {s * 100:.0f} %" for y, c, s in d['genom_mid'])}) entscheidet die Instanz, nicht die Kostenstufe. Zwischen den Stufen ist nichts gemessen.
 - „Genom nie“ kostet bei Ausbeute 0,50 und Kosten 1 {fmt1(y5(1)['never']['mean'])} % mehr, „Genom immer zuerst“ bei Kosten 4 {fmt1(y5(4)['forced']['mean'])} %: Eine einfache Politik am falschen Ende der Kostenskala ist teuer.
 
 **Basisratenfalle** (Sensitivität 0,99, Falsch-positiv-Rate 0,01 je Test; gemeinsamer Fehler: {BR.DISTURB_SHARE * 100:.0f} % der Gesunden tragen einen Störfaktor, der jeden Test mit Wahrscheinlichkeit {fmt1(BR.DISTURB_PROB)} positiv macht; Wahrscheinlichkeit, krank zu sein; **die Parameter des Störfaktors sind angenommen, nicht gemessen**):
@@ -215,7 +256,7 @@ Alle Zahlen: Messreihe `data/dtf_results.json` ({res['meta']['n_instances']} Ins
 
 - **Die Messreihe gilt für diese Welt:** 4, 6 oder 10 Diagnosen, bis zu 8 einfache Tests, die gemessenen Reglerstufen; zwischen den Stufen und für andere Kombinationen zeigt die App die nächstliegende gemessene Zelle und nennt die abweichenden Parameter.
 - **Die Regeln gelten nur mit ihrer abgestimmten Schwelle** und nur für die genannten drei; keine Aussage über die Methodenklasse. Die Stoppschwelle wurde aus sechs Werten gewählt; ein feineres Gitter könnte die Lücken verschieben.
-- **Unterschiede unter zwei Standardfehlern sind nicht zu deuten** ({d['n_open']} Zelle: Vorab sehr schief).
+- **Unterschiede unter zwei Standardfehlern sind nicht zu deuten:** kurzsichtig gegen Info/Kosten in {_z(len(d['open_KG']))} ({', '.join(cell_label(cells[c]['params']) for c in d['open_KG'])}), der billigste nützliche Test gegen kurzsichtig in {_z(len(d['open_BM']))} ({' und '.join(cell_label(cells[c]['params']) for c in d['open_BM'])}).
 - **Nicht gerechnet:** Wiederholung desselben Tests, gemeinsame Fehlerursachen zwischen Tests (außer im Rechner der Basisratenfalle), Reihenfolgebedingungen, Dauer und Belastung, ein Irrtumspreis je Diagnosenpaar, mehr als zwei Ausgänge außer „unklar“ und Genom, mehr als 8 Tests; die Genom-Ausbeute ist für alle Diagnosen gleich.
 - **Nur an erfundenen Instanzen geprüft;** keine echten Tests, keine echten Daten, keine Literaturzahlen als Beleg.
 
@@ -223,6 +264,7 @@ Alle Zahlen: Messreihe `data/dtf_results.json` ({res['meta']['n_instances']} Ins
 
 - [`testwert-evsi-demo`](https://github.com/sebastian-hanisch/testwert-evsi-demo): ein Test, Bayes-Update im umgedrehten Baum, Wert der Stichprobeninformation, n gleichartige unabhängige Tests; dort ausdrücklich nicht gerechnet: sequentielle und abhängige Tests, verschiedenartige Tests, mehr als zwei Zustände. Dasselbe Bayes-Update, hier mit Folge und Stoppen.
 - [`kalibrierung-schwelle-demo`](https://github.com/sebastian-hanisch/kalibrierung-schwelle-demo): aus einer Wahrscheinlichkeit eine Entscheidung über das Kostenverhältnis (Schwelle 1/(1+r)). Hier ist die Stopp-Entscheidung derselbe Vergleich von Stopp-Verlust und erwartetem Verlust beim Weitermachen; sie ergibt keine feste Schwelle auf die Wahrscheinlichkeit der besten Diagnose, sondern hängt vom ganzen Zustand ab.
+- [`entscheidung-verfahrenswahl-demo`](https://github.com/sebastian-hanisch/entscheidung-verfahrenswahl-demo): vergleicht **Rechenverfahren** (Entscheidungsbaum, Zustandsrechnung, Szenario-LP, gemischt-ganzzahliges Modell) für ein gegebenes Entscheidungsmodell am Kapazitätsfall mit zwei Zuständen; dort darf nach jedem von bis zu vier gleichartigen Tests (gleiche Trefferquote, gleiche Kosten) gestoppt werden. Hier geht es um das **Entscheidungsmodell** selbst: mehrere verschiedenartige Tests mit eigenen Kosten und Fehlern, mehr als zwei Diagnosen, einfache Regeln gegen die exakte Strategie, ein breiter Test, der Ausgang „unklar“ und die Basisratenfalle. Beide rechnen das Stoppen mit einer Rückwärtsrechnung über Zustände; die Zahlen sind nicht vergleichbar.
 - [`baum-strategie-demo`](https://github.com/sebastian-hanisch/baum-strategie-demo): Entscheidungsbaum, Strategie und Rollback; die exakte Strategie hier ist ein Rollback über die Zustandsmenge.
 - Nachbar, keine Doppelung: das Vorhaben zu Gruppentests (Mischproben bei vielen Personen; hier eine Person und mehrere Tests).
 

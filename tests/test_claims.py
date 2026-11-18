@@ -134,12 +134,53 @@ def test_the_stored_mean_of_the_paired_difference_agrees_with_the_per_instance_d
     assert abs(m - c["diff_MG"]["mean"]) < 1e-9 and abs(s - c["diff_MG"]["se"]) < 1e-9
 
 
+def test_the_standard_error_of_the_unclear_increase_follows_the_delta_method():
+    """Eigene Rechnung ohne make_readme: Zuwachs R − 1 mit R = m_c/m_0 (ungepaarte Mittel), SE(R) = R · sqrt((se_c/m_c)² + (se_0/m_0)²), in Prozentpunkten.
+    Gegen die einfache Differenzformel √(se_c² + se_0²)/m_0, die den Faktor m_c/m_0 weglässt und bei u = 0,3 rund 20 % zu eng wäre."""
+    import math
+
+    def mean_se(cid):
+        o = RES["cells"][cid]["per_instance"]["opt"]
+        n = len(o)
+        m = sum(o) / n
+        sd = math.sqrt(sum((x - m) ** 2 for x in o) / (n - 1))
+        return m, sd / math.sqrt(n)
+
+    m0, s0 = mean_se("u0")
+    got = MR.derived(RES)["unclear_inc_se"]
+    for cid, g in zip(("u1", "u2"), got):
+        mc, sc = mean_se(cid)
+        r = mc / m0
+        expected = 100.0 * r * math.sqrt((sc / mc) ** 2 + (s0 / m0) ** 2)
+        naive = 100.0 * math.sqrt(sc ** 2 + s0 ** 2) / m0
+        assert abs(g - expected) < 1e-9
+        assert g > naive and g / naive > 1.05  # der Faktor m_c/m_0 > 1 macht den Fehler größer, nicht kleiner
+    assert f"± {MR.fmt1(got[0])} beziehungsweise ± {MR.fmt1(got[1])} Punkten" in README
+    assert "Delta-Methode" in README
+
+
+def test_open_cells_are_named_per_comparison():
+    d = MR.derived(RES)
+    assert d["open_KG"] == ["g2"] and d["open_BM"] == ["q0", "g1"]
+    assert "kurzsichtig gegen Info/Kosten in 1 Zelle (Vorab sehr schief)" in README
+    assert "gegen kurzsichtig in 2 Zellen (rauschfrei und gleichverteiltes Vorab)" in README
+    assert "das ändert die Wahrscheinlichkeiten der Diagnosen nicht" in README
+
+
+def test_readme_uses_the_typographic_minus_and_no_bracket_plural():
+    """Vorzeichen negativer Differenzen mit „−“ (nicht „-“) in Tabellen und Prosa; keine Klammer-Plurale wie „Zelle(n)“."""
+    import re
+    assert "Zelle(n)" not in README
+    assert not re.search(r"(\||jetzt|bei|liegt) -\d", README)
+    assert "−5,4 ± 0,9" in README
+
+
 def test_the_unclear_cells_keep_the_order_of_the_rules():
     for cid in ("u0", "u1", "u2"):
         c = RES["cells"][cid]
         assert c["M"]["mean"] < c["G"]["mean"] < c["B"]["mean"]
     d = MR.derived(RES)
-    assert d["pair_MG_unclear"]["under"] == 3 and "Kurzsichtig liegt in 3 der drei Zellen mehr als zwei Standardfehler unter Info/Kosten" in README
+    assert d["pair_MG_unclear"]["under"] == 3 and "Kurzsichtig hat in 3 der drei Zellen eine um mehr als zwei Standardfehler kleinere Lücke als Info/Kosten" in README
 
 
 def test_unclear_raises_the_optimum_by_the_stated_percentages():
@@ -152,7 +193,7 @@ def test_genome_step_between_the_measured_costs():
     first = lambda y, k: c[f"y{y}c{k}"]["share_first"]  # noqa: E731
     assert first(50, 1) > 0.9 > 0.1 > first(50, 4) and 0.2 <= first(50, 2) <= 0.6        # Ausbeute 0,5: zwischen den Kosten 2 und 4 kippt es, bei 1 ist es fast immer der erste Test
     assert first(25, 1) > 0.2 and first(25, 2) == 0.0 and all(first(y, k) == 0.0 for y in (25, 50) for k in (8, 16))
-    assert "zwischen den Kosten 1 und 2 beziehungsweise 2 und 4 mittleren Testkosten" in README
+    assert "bei Ausbeute 0,25 zwischen den Kosten 1 und 2, bei Ausbeute 0,50 zwischen den Kosten 2 und 4 mittleren Testkosten" in README
 
 
 def test_genome_simple_policies_cost_more_at_the_wrong_end():
