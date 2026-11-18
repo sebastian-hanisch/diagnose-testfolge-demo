@@ -52,7 +52,7 @@ def stable_interval(values, thr):
     above = min(v for v in values if v >= thr)
     return (math.floor(below * 10 + 1e-9) + 1) / 10, math.floor(above * 10 + 1e-9) / 10
 FOOTER = ("Diese Demo ist Teil des Portfolios von [Sebastian Hanisch](https://sebastianhanisch.net) – Operations Research und Machine Learning "
-          "([Über mich](https://sebastianhanisch.net/ueber-mich.html)). Mehr zu den Demos: [Interaktive Demos](https://sebastianhanisch.net/demos.html).")
+          "([Über mich](https://sebastianhanisch.net/ueber-mich.html)). Mehr zur Reihe: [Erkennen unter Unsicherheit: Hinweis und Ursache](https://sebastianhanisch.net/konzepte-erkennen-unsicherheit.html).")
 
 
 def count_tests() -> int:
@@ -149,7 +149,7 @@ def _alt_neu_rows(res):
         c, old = res["cells"][cid], VORMESSUNG_REGELN[cid]
         rows.append([UI._short(c["params"]), f"{fmt2(old[0])} → {fmt2(c['opt_mean'])}", f"{fmt1(old[1])} → {fmt1(c['M']['mean'])}", f"{fmt1(old[2])} → {fmt1(c['G']['mean'])}",
                      f"{fmt1(old[3])} → {fmt1(c['B']['mean'])}"])
-    return UI.md_table(["Zelle", "Optimum (Vormessung → Messreihe)", "kurzsichtig (%)", "Info/Kosten (%)", "billigster nützlicher Test (%)"], rows)
+    return UI.md_table(["Zelle", "Optimum (erste Messung → Messreihe)", "kurzsichtig (%)", "Info/Kosten (%)", "billigster nützlicher Test (%)"], rows)
 
 
 def _alt_neu_genom(res):
@@ -158,7 +158,7 @@ def _alt_neu_genom(res):
         c, old = res["cells"][cid], VORMESSUNG_GENOM[cid]
         rows.append([f"Ausbeute {fmt2(c['params']['g_yield'])}, Kosten {fmt1(c['params']['g_cost'])}", f"{old[0]} % → {c['share_first'] * 100:.0f} %", f"{fmt1(old[1])} → {fmt1(c['forced']['mean'])}",
                      f"{fmt1(old[2])} → {fmt1(c['never']['mean'])}"])
-    return UI.md_table(["Genom-Zelle", "Genom ist erster Test (Vormessung → Messreihe)", "„immer zuerst“ (% mehr)", "„nie“ (% mehr)"], rows)
+    return UI.md_table(["Genom-Zelle", "Genom ist erster Test (erste Messung → Messreihe)", "„immer zuerst“ (% mehr)", "„nie“ (% mehr)"], rows)
 
 
 def render(res: dict, n_tests: int) -> str:
@@ -177,7 +177,7 @@ def render(res: dict, n_tests: int) -> str:
 <!-- TODO nach dem Deploy: direkt hierher den Live-Link setzen (Leerzeile davor und danach):
 **[→ Demo live ausprobieren](https://sebastianhanisch-diagnose-testfolge-demo.streamlit.app/)** -->
 
-Demo zur **Entscheidungsanalyse** (das zwölfte Stück der gleichnamigen Linie) für die Website „Sebastian Hanisch – Operations Research und Machine Learning“. Eine Person, mehrere mögliche Diagnosen, mehrere Tests mit Kosten und Fehlern: Die Demo rechnet die **beste Folge exakt** (dynamische Optimierung über alle Zustände mit optimalem Stoppen) und stellt drei **einfache Regeln** daneben. Dazu kommen ein **Genomtest** (ein breiter, teurer Test mit vielen Ausgängen), ein dritter Ausgang **„unklar“** und ein Rechner zur **Basisratenfalle**. **Lehrmodell mit erfundenen Daten, keine medizinische Beratung** und keine Empfehlung für eine Untersuchungsfolge.
+Demo zum **Erkennen unter Unsicherheit** für die Website „Sebastian Hanisch – Operations Research und Machine Learning“. Eine Person, mehrere mögliche Diagnosen, mehrere Tests mit Kosten und Fehlern: Die Demo rechnet die **beste Folge exakt** (dynamische Optimierung über alle Zustände mit optimalem Stoppen) und stellt drei **einfache Regeln** daneben. Dazu kommen ein **Genomtest** (ein breiter, teurer Test mit vielen Ausgängen), ein dritter Ausgang **„unklar“** und ein Rechner zur **Basisratenfalle**. **Lehrmodell mit erfundenen Daten, keine medizinische Beratung** und keine Empfehlung für eine Untersuchungsfolge.
 
 Sie setzt dort an, wo [`testwert-evsi-demo`](https://github.com/sebastian-hanisch/testwert-evsi-demo) aufhört: Diese Demo nennt sequentielle Tests, die Wahl zwischen verschiedenartigen Tests und mehr als zwei Zustände selbst als nicht gerechnet; hier sind sie gerechnet. Das Stoppen nach jedem Test mit bis zu vier gleichartigen Tests rechnet die [`entscheidung-verfahrenswahl-demo`](https://github.com/sebastian-hanisch/entscheidung-verfahrenswahl-demo) (Verweis unten).
 
@@ -185,18 +185,18 @@ Sie setzt dort an, wo [`testwert-evsi-demo`](https://github.com/sebastian-hanisc
 
 Welcher Test als Nächster, und wann reicht es? Wer Tests mit Kosten und Fehlern einsetzt, muss die Reihenfolge und den Abbruch wählen. Kernfragen: **Wie weit liegen einfache Regeln über dem Optimum? Wann lohnt ein teurer breiter Test zuerst? Wann reichen zwei positive Tests nicht, weil sie sich einen Fehler teilen?** Die Antworten stehen vorgerechnet in der Messreihe ({res['meta']['n_instances']} Instanzen je Zelle); die Instanz oben auf der Seite ist nur ein Beispiel.
 
-## Befunde und Korrekturen gegenüber der Vormessung
+## Befunde und Korrekturen gegenüber der ersten Messung
 
-Dem Bau ging eine Vormessung mit dem Zufallsgenerator von NumPy voraus (andere Instanzen). Die Messreihe der Demo rechnet mit dem eigenen SplitMix64 neu ({res['meta']['n_instances']} Instanzen je Zelle, Stoppschwelle auf den ersten {res['meta']['n_tune']} abgestimmt, Lücke auf den übrigen). **Die Befunde bleiben der Richtung nach bestehen (Rauschen öffnet die Lücke von Info/Kosten und billigstem Test, bei kurzsichtig wächst sie nicht durchgehend; Irrtumspreis 100 und gleichverteiltes Vorab kehren die Reihenfolge von kurzsichtig und Info/Kosten; der Genom-Kipppunkt liegt an denselben Kostenstufen), einzelne Zahlen verschieben sich, und zwei Aussagen der Vormessung gelten so nicht mehr:**
+Dem Bau ging eine erste Messung mit dem Zufallsgenerator von NumPy voraus (andere Instanzen). Die Messreihe der Demo rechnet mit dem eigenen SplitMix64 neu ({res['meta']['n_instances']} Instanzen je Zelle, Stoppschwelle auf den ersten {res['meta']['n_tune']} abgestimmt, Lücke auf den übrigen). **Die Befunde bleiben der Richtung nach bestehen (Rauschen öffnet die Lücke von Info/Kosten und billigstem Test, bei kurzsichtig wächst sie nicht durchgehend; Irrtumspreis 100 und gleichverteiltes Vorab kehren die Reihenfolge von kurzsichtig und Info/Kosten; der Genom-Kipppunkt liegt an denselben Kostenstufen), einzelne Zahlen verschieben sich, und zwei Aussagen der ersten Messung gelten so nicht mehr:**
 
 {_alt_neu_rows(res)}
 
 {_alt_neu_genom(res)}
 
-- **„Keine der drei Faustregeln liegt unter 5 %“ gilt nicht.** In {d['n_under5']} von {len(BIN_IDS)} binären Zellen liegt die beste einfache Regel unter 5 % (Zellen {', '.join(d['under5_ids'])}: {', '.join(fmt1(d['best'][c][1]) for c in d['under5_ids'])} %). Die Vormessung nannte nur Zellen mit Rauschen und mittlerem Irrtumspreis.
-- **Kurzsichtig gegen Info/Kosten im Standard (Se/Sp 0,9/0,9, L 20):** Vormessung −8,1 ± 1,0, jetzt {_diff(q2)}; das Vorzeichen bleibt, der Abstand ist kleiner. Bei Se/Sp 0,8/0,9 liegt der Abstand jetzt bei {_diff(cells['q3'])} (Vormessung −1,9 ± 1,1, damals innerhalb von zwei Standardfehlern); bei sehr schiefem Vorab (Zipf 1,5) bei {_diff(g2)} (Vormessung −1,9 ± 2,2): dort bleibt es offen.
+- **„Keine der drei Faustregeln liegt unter 5 %“ gilt nicht.** In {d['n_under5']} von {len(BIN_IDS)} binären Zellen liegt die beste einfache Regel unter 5 % (Zellen {', '.join(d['under5_ids'])}: {', '.join(fmt1(d['best'][c][1]) for c in d['under5_ids'])} %). Die erste Messung nannte nur Zellen mit Rauschen und mittlerem Irrtumspreis.
+- **Kurzsichtig gegen Info/Kosten im Standard (Se/Sp 0,9/0,9, L 20):** erste Messung −8,1 ± 1,0, jetzt {_diff(q2)}; das Vorzeichen bleibt, der Abstand ist kleiner. Bei Se/Sp 0,8/0,9 liegt der Abstand jetzt bei {_diff(cells['q3'])} (erste Messung −1,9 ± 1,1, damals innerhalb von zwei Standardfehlern); bei sehr schiefem Vorab (Zipf 1,5) bei {_diff(g2)} (erste Messung −1,9 ± 2,2): dort bleibt es offen.
 - **Schwelle der Meldung „verfehlt deutlich“:** Ursprünglich waren 15 % vorgesehen. Die größte Lücke der besten einfachen Regel in der Messreihe ist {fmt1(d['max_best'])} %, der Zustand wäre nie erschienen; die Schwelle steht darum bei {C.VERDICT_VERFEHLT:.0f} % (und „reicht“ unter {C.VERDICT_REICHT:.0f} %). Das ist eine Setzung nach dem Blick auf die Messung, keine Messung. Sie liegt aber in einer Lücke der Messwerte und nicht an einem Grenzfall: In den {len(ALL_IDS)} Zellen mit Regelvergleich gibt jede Schwelle von {fmt1(d['stable'][C.VERDICT_REICHT][0])} bis {fmt1(d['stable'][C.VERDICT_REICHT][1])} % („reicht“) beziehungsweise von {fmt1(d['stable'][C.VERDICT_VERFEHLT][0])} bis {fmt1(d['stable'][C.VERDICT_VERFEHLT][1])} % („verfehlt deutlich“) dieselbe Einteilung; die Lücken gehören zu diesen Zellen und können sich bei einer Neumessung verschieben (der Test `test_the_thresholds_sit_inside_gaps_of_the_cell_values` fängt das).
-- **Rechenzeit:** Sie schwankt stark mit der Last der Maschine (die Vormessung auf ruhiger Maschine und der Bau unter Last lagen weit auseinander). Zeiten sind kein Befund und stehen in keinem Test.
+- **Rechenzeit:** Sie schwankt stark mit der Last der Maschine (die erste Messung auf ruhiger Maschine und der Bau unter Last lagen weit auseinander). Zeiten sind kein Befund und stehen in keinem Test.
 
 ## Modell
 
@@ -257,7 +257,7 @@ Alle Zahlen: Messreihe `data/dtf_results.json` ({res['meta']['n_instances']} Ins
 - **Die Messreihe gilt für diese Welt:** 4, 6 oder 10 Diagnosen, bis zu 8 einfache Tests, die gemessenen Reglerstufen; zwischen den Stufen und für andere Kombinationen zeigt die App die nächstliegende gemessene Zelle und nennt die abweichenden Parameter.
 - **Die Regeln gelten nur mit ihrer abgestimmten Schwelle** und nur für die genannten drei; keine Aussage über die Methodenklasse. Die Stoppschwelle wurde aus sechs Werten gewählt; ein feineres Gitter könnte die Lücken verschieben.
 - **Unterschiede unter zwei Standardfehlern sind nicht zu deuten:** kurzsichtig gegen Info/Kosten in {_z(len(d['open_KG']))} ({', '.join(cell_label(cells[c]['params']) for c in d['open_KG'])}), der billigste nützliche Test gegen kurzsichtig in {_z(len(d['open_BM']))} ({' und '.join(cell_label(cells[c]['params']) for c in d['open_BM'])}).
-- **Nicht gerechnet:** Wiederholung desselben Tests, gemeinsame Fehlerursachen zwischen Tests (außer im Rechner der Basisratenfalle), Reihenfolgebedingungen, Dauer und Belastung, ein Irrtumspreis je Diagnosenpaar, mehr als zwei Ausgänge außer „unklar“ und Genom, mehr als 8 Tests; die Genom-Ausbeute ist für alle Diagnosen gleich.
+- **Nicht gerechnet:** Wiederholung desselben Tests, gemeinsame Fehlerursachen zwischen Tests (außer im Rechner der Basisratenfalle), Reihenfolgebedingungen, Dauer und Belastung, ein Irrtumspreis je Diagnosenpaar, mehr als zwei Ausgänge außer „unklar“ und Genom, mehr als 8 Tests, Gruppentests (Mischproben bei vielen Personen; hier geht es um eine Person und mehrere Tests); die Genom-Ausbeute ist für alle Diagnosen gleich.
 - **Nur an erfundenen Instanzen geprüft;** keine echten Tests, keine echten Daten, keine Literaturzahlen als Beleg.
 
 ## Verwandte Demos mit demselben mathematischen Modell
@@ -266,7 +266,7 @@ Alle Zahlen: Messreihe `data/dtf_results.json` ({res['meta']['n_instances']} Ins
 - [`kalibrierung-schwelle-demo`](https://github.com/sebastian-hanisch/kalibrierung-schwelle-demo): aus einer Wahrscheinlichkeit eine Entscheidung über das Kostenverhältnis (Schwelle 1/(1+r)). Hier ist die Stopp-Entscheidung derselbe Vergleich von Stopp-Verlust und erwartetem Verlust beim Weitermachen; sie ergibt keine feste Schwelle auf die Wahrscheinlichkeit der besten Diagnose, sondern hängt vom ganzen Zustand ab.
 - [`entscheidung-verfahrenswahl-demo`](https://github.com/sebastian-hanisch/entscheidung-verfahrenswahl-demo): vergleicht **Rechenverfahren** (Entscheidungsbaum, Zustandsrechnung, Szenario-LP, gemischt-ganzzahliges Modell) für ein gegebenes Entscheidungsmodell am Kapazitätsfall mit zwei Zuständen; dort darf nach jedem von bis zu vier gleichartigen Tests (gleiche Trefferquote, gleiche Kosten) gestoppt werden. Hier geht es um das **Entscheidungsmodell** selbst: mehrere verschiedenartige Tests mit eigenen Kosten und Fehlern, mehr als zwei Diagnosen, einfache Regeln gegen die exakte Strategie, ein breiter Test, der Ausgang „unklar“ und die Basisratenfalle. Beide rechnen das Stoppen mit einer Rückwärtsrechnung über Zustände; die Zahlen sind nicht vergleichbar.
 - [`baum-strategie-demo`](https://github.com/sebastian-hanisch/baum-strategie-demo): Entscheidungsbaum, Strategie und Rollback; die exakte Strategie hier ist ein Rollback über die Zustandsmenge.
-- Nachbar, keine Doppelung: das Vorhaben zu Gruppentests (Mischproben bei vielen Personen; hier eine Person und mehrere Tests).
+- [`basisratenfalle-demo`](https://github.com/sebastian-hanisch/basisratenfalle-demo): die Basisratenfalle als eigene Demo (Bevölkerung als Zählung, exakte Rechnung, gemeinsamer Fehler gegen unabhängige Tests, Zuweisungsfilter); hier ist sie nur ein Rechner neben der Testfolge.
 
 ## Verifikation ({n_tests} Tests)
 
@@ -299,7 +299,7 @@ Alle Zahlen: Messreihe `data/dtf_results.json` ({res['meta']['n_instances']} Ins
 | `dtf_presets.py`, `dtf_layout.py` | Permalink, Presets, fester Kopf |
 | `dtf_visualization.py`, `dtf_ui_panel.py`, `dtf_pdf_export.py` | Figuren, Tabellen und Textbausteine, PDF-Auswertung |
 | `data/dtf_results.json` | vorgerechnete Messreihe (24 Zellen) |
-| `tools/sweep.py`, `tools/report.py`, `tools/make_readme.py` | Messreihe reproduzieren, berichten (mit den Zahlen der Vormessung), README erzeugen |
+| `tools/sweep.py`, `tools/report.py`, `tools/make_readme.py` | Messreihe reproduzieren, berichten (mit den Zahlen der ersten Messung), README erzeugen |
 | `requirements.txt`, `requirements-dev.txt` | Laufzeit-Bibliotheken, plus pytest |
 | `tests/` | siehe Verifikation |
 
